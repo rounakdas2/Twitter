@@ -9,16 +9,16 @@ const app = express();
 app.use(express.json());
 
 const dbPath = path.join(__dirname, "twitterClone.db");
-let db= null;
+let db = null;
 
 const initializeDbAndServer = async () => {
   try {
     db = await open({
       filename: dbPath,
-      driver: sqlite3.Database,    
+      driver: sqlite3.Database,
     });
 
-    app.listen(300,() => {
+    app.listen(300, () => {
       console.log("Server Running at http://localhost:3000/");
     });
   } catch (error) {
@@ -28,7 +28,7 @@ const initializeDbAndServer = async () => {
 };
 initializeDbAndServer();
 
-//GETTING USER FOLLOWING PEOPLE ID'S 
+//GETTING USER FOLLOWING PEOPLE ID'S
 
 const getFollowingPeopleIdsOfUser = async (username) => {
   const getTheFollowingPeopleQuery = `
@@ -44,7 +44,7 @@ WHERE user.username='${username}';`;
   return arrayOfIds;
 };
 
-// AUTHENTICATION TOKEN 
+// AUTHENTICATION TOKEN
 
 const authentication = (request, response, next) => {
   let jwtToken;
@@ -53,7 +53,7 @@ const authentication = (request, response, next) => {
     jwtToken = authHeader.split(" ")[1];
   }
 
-  if (jwtToken){
+  if (jwtToken) {
     jwt.verify(jwtToken, "SECRET_KEY", (error, payload) => {
       if (error) {
         response.status(401);
@@ -70,7 +70,7 @@ const authentication = (request, response, next) => {
   }
 };
 
-//TWEET ACCESS VERIFICATION 
+//TWEET ACCESS VERIFICATION
 
 const tweetAccessVerification = async (request, response, next) => {
   const { userId } = request;
@@ -84,53 +84,53 @@ WHERE tweet.tweet_id = '${tweetId}' AND follower_user_id = '${userId}';`;
   if (tweet === undefined) {
     response.status(401);
     response.send("Invalid Request");
-  }else{
-   next();
+  } else {
+    next();
   }
 };
 
-// API - 1 
+// API - 1
 
 app.post("/register/", async (request, response) => {
   const { username, password, name, gender } = request.body;
   const getUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
   const userDBDetails = await db.get(getUserQuery);
 
-  if(userDBDetails !== undefined) {
+  if (userDBDetails !== undefined) {
     response.status(400);
     response.send("User already exists");
-  }else{
+  } else {
     if (password.length < 6) {
       response.status(400);
       response.send("Password is too short");
     } else {
-     const hashedPassword = await bcrypt.hash(password, 10);
-     const createUserQuery = `INSERT INTO user(username, password, name, gender)
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const createUserQuery = `INSERT INTO user(username, password, name, gender)
        VALUES('${username}','${hashedPassword}','${name}','${gender}')`;
-       await db.run(createUserQuery);
-       response.send("User created successfully");
+      await db.run(createUserQuery);
+      response.send("User created successfully");
     }
   }
 });
 
-//API - 2 
+//API - 2
 app.post("/login/", async (request, response) => {
   const { username, password } = request.body;
   const getUserQuery = `SELECT * FROM user WHERE username='${username}';`;
   const userDbDetails = await db.get(getUserQuery);
-  if (userDbDetails !== undefined){
+  if (userDbDetails !== undefined) {
     const isPasswordCorrect = await bcrypt.compare(
-     password,
-     userDbDetails.password
+      password,
+      userDbDetails.password
     );
 
     if (isPasswordCorrect) {
       const payload = { username, userId: userDbDetails.user_id };
       const jwtToken = jwt.sign(payload, "SECRET_KEY");
       response.send({ jwtToken });
-    }else {
-     response.status(400);
-     response.send("Invalid password");
+    } else {
+      response.status(400);
+      response.send("Invalid password");
     }
   } else {
     response.status(400);
@@ -138,7 +138,7 @@ app.post("/login/", async (request, response) => {
   }
 });
 
-//API - 3 
+//API - 3
 
 app.get("/user/tweets/feed/", authentication, async (request, response) => {
   const { username } = request;
@@ -157,7 +157,7 @@ app.get("/user/tweets/feed/", authentication, async (request, response) => {
   response.send(tweets);
 });
 
-//API - 4 
+//API - 4
 
 app.get("/user/following/", authentication, async (request, response) => {
   const { username, userId } = request;
@@ -169,19 +169,19 @@ app.get("/user/following/", authentication, async (request, response) => {
   response.send(followingPeople);
 });
 
-//API - 5 
+//API - 5
 
 app.get("/user/followers/", authentication, async (request, response) => {
   const { username, userId } = request;
   const getFollowersQuery = `SELECT DISTINCT name FROM follower
     INNER JOIN user ON user.user_id = follower.follower_user_id
     WHERE following_user_id = '${userId}';`;
-  
+
   const followers = await db.all(getFollowersQuery);
   response.send(followers);
 });
 
-//API - 6 
+//API - 6
 
 app.get(
   "/tweets/:tweetId/",
@@ -201,7 +201,7 @@ app.get(
   }
 );
 
-//API - 7 
+//API - 7
 
 app.get(
   "/tweets/:tweetId/likes",
@@ -215,11 +215,11 @@ app.get(
     `;
     const likedUsers = await db.all(getLikesQuery);
     const userArray = likedUsers.map((eachUser) => eachUser.username);
-    response.send({likes: userArray});
+    response.send({ likes: userArray });
   }
 );
 
-// API - 8 
+// API - 8
 
 app.get(
   "/tweets/:tweetId/replies/",
@@ -232,13 +232,13 @@ app.get(
     WHERE tweet_id = '${tweetId}';
     `;
     const repliedUsers = await db.all(getRepliedQuery);
-    response.send({ replies:repliedUsers }): 
+    response.send({ replies: repliedUsers });
   }
 );
 
-//API - 9 
+//API - 9
 
-app.get("/user/tweets/",authentication, async (request, response) => {
+app.get("/user/tweets/", authentication, async (request, response) => {
   const { userId } = request;
   const getTweetsQuery = `
    SELECT tweet,
@@ -253,7 +253,7 @@ app.get("/user/tweets/",authentication, async (request, response) => {
   response.send(tweets);
 });
 
-// API - 10 
+// API - 10
 
 app.post("/user/tweets/", authentication, async (request, response) => {
   const { tweet } = request.body;
@@ -265,7 +265,7 @@ app.post("/user/tweets/", authentication, async (request, response) => {
   response.send("Created a Tweet");
 });
 
-//API - 11 
+//API - 11
 
 app.delete("/tweets/:tweetId/", authentication, async (request, response) => {
   const { tweetId } = request.params;
@@ -276,33 +276,11 @@ app.delete("/tweets/:tweetId/", authentication, async (request, response) => {
   if (tweet === undefined) {
     response.status(401);
     response.send("Invalid Request");
-  }else{
+  } else {
     const deleteTweetQuery = `DELETE FROM tweet WHERE tweet_id ='${tweetId}';`;
     await db.run(deleteTweetQuery);
     response.send("Tweet Removed");
   }
 });
 
-module.exports = app; 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+module.exports = app;
